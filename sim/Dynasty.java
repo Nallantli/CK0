@@ -17,7 +17,7 @@ public class Dynasty {
 
 	public Dynasty(Language lang, Timeline time) {
 		members = new ArrayList<Person>();
-		name = lang.genDynastyName(String.valueOf(Main.rand.nextLong()));
+		name = lang.genDynastyName(String.valueOf(Main.rand.nextLong()), false);
 		this.time = time;
 		time.dynasty_count++;
 	}

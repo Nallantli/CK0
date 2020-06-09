@@ -30,10 +30,14 @@ public class Display extends JPanel {
 	final static float dash1[] = { 2.0f };
 	public final static BasicStroke dashed = new BasicStroke(2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f,
 			dash1, 0.0f);
+
+	public final static BasicStroke dashed_light = new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
+			10.0f, dash1, 0.0f);
 	public final static BasicStroke default_stroke = new BasicStroke();
 
-	private final String months[] = { "Jan 1", "Jan 2", "Feb 1", "Feb 2", "Mar 1", "Mar 2", "Apr 1", "Apr 2", "May 1", "May 2", "Jun 1", "Jun 2", "Jul 1", "Jul 2", "Aug 1", "Aug 2", "Sep 1", "Sep 2", "Oct 1", "Oct 2", "Nov 1", "Nov 2",
-			"Dec 1", "Dec 2" };
+	private final String months[] = { "Jan 1", "Jan 2", "Feb 1", "Feb 2", "Mar 1", "Mar 2", "Apr 1", "Apr 2", "May 1",
+			"May 2", "Jun 1", "Jun 2", "Jul 1", "Jul 2", "Aug 1", "Aug 2", "Sep 1", "Sep 2", "Oct 1", "Oct 2", "Nov 1",
+			"Nov 2", "Dec 1", "Dec 2" };
 
 	private int select = 0;
 	private int mode = 0;
@@ -50,7 +54,7 @@ public class Display extends JPanel {
 
 	boolean stepping = false;
 	boolean drawing = true;
-	Font font = new Font("Fira Code", Font.PLAIN, 10);
+	Font font = new Font("Iosevka SS05", Font.PLAIN, 10);
 
 	public Display(GenerateMap map) {
 		sc = new Scanner(System.in);
@@ -150,34 +154,6 @@ public class Display extends JPanel {
 		}
 	}
 
-	private void drawLanguages(Graphics2D g2) {
-		this.timeline.drawLanguages(g2);
-	}
-
-	private void drawDevelopment(Graphics2D g2) {
-		this.timeline.drawDevelopment(g2);
-	}
-
-	private void drawCounties(Graphics2D g2) {
-		this.timeline.drawCounties(g2);
-	}
-
-	private void drawDuchies(Graphics2D g2) {
-		this.timeline.drawDuchies(g2);
-	}
-
-	private void drawKingdoms(Graphics2D g2) {
-		this.timeline.drawKingdoms(g2);
-	}
-
-	private void drawEmpires(Graphics2D g2) {
-		this.timeline.drawEmpires(g2);
-	}
-
-	private void drawPeople(Graphics2D g2) {
-		this.timeline.drawPeople(g2);
-	}
-
 	private void drawPlates(Graphics2D g2) {
 		for (int i = 0; i < PlateShapes.size(); i++) {
 			g2.setPaint(Color.WHITE);
@@ -194,7 +170,7 @@ public class Display extends JPanel {
 		g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
 		// g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
 		// RenderingHints.VALUE_ANTIALIAS_ON);
-	
+
 		g2.setFont(font);
 		g2.setPaint(sPolygon.WATER);
 		g2.fillRect(0, 0, Main.SIZE_X, Main.SIZE_Y);
@@ -217,61 +193,75 @@ public class Display extends JPanel {
 				}
 				selected = null;
 				drawTerrain(g2);
-				drawPeople(g2);
+				timeline.drawWaterways(g2);
+				timeline.drawPeople(g2);
 				break;
 			case 2:
 				select = 0;
 				p = null;
 				if (province != null)
 					selected = timeline.FindCounty(province);
-				drawCounties(g2);
+				timeline.drawWaterways(g2);
+				timeline.drawCounties(g2);
 				break;
 			case 3:
 				select = 0;
 				p = null;
 				if (province != null)
 					selected = timeline.FindDuchy(province);
-				drawDuchies(g2);
+				timeline.drawWaterways(g2);
+				timeline.drawDuchies(g2);
 				break;
 			case 4:
 				select = 0;
 				p = null;
 				if (province != null)
 					selected = timeline.FindKingdom(province);
-				drawKingdoms(g2);
+				timeline.drawWaterways(g2);
+				timeline.drawKingdoms(g2);
 				break;
 			case 5:
 				select = 0;
 				p = null;
 				if (province != null)
 					selected = timeline.FindEmpire(province);
-				drawEmpires(g2);
+				timeline.drawWaterways(g2);
+				timeline.drawEmpires(g2);
 				break;
 			case 6:
 				select = 0;
 				p = null;
-				drawPlates(g2);
+				selected = null;
+				timeline.drawWaterways(g2);
+				timeline.drawIslands(g2);
 				break;
 			case 7:
 				select = 0;
 				p = null;
-				drawLanguages(g2);
+				selected = null;
+				timeline.drawWaterways(g2);
+				timeline.drawLanguages(g2);
 				break;
 			case 8:
 				select = 0;
 				p = null;
 				if (province != null)
 					selected = timeline.FindCounty(province);
-				drawDevelopment(g2);
+				timeline.drawWaterways(g2);
+				timeline.drawDevelopment(g2);
 				break;
 		}
-		
+
 		g2.setColor(Color.WHITE);
 		g2.drawString("People: " + timeline.person_manager.size(), 20, 20);
 		g2.drawString("Dynasties: " + timeline.dynasty_count + ", " + timeline.original_dynasties, 20, 34);
 		g2.drawString("RR: " + String.format("%.2f", timeline.replacementrate), 20, 48);
 
 		if (selected != null) {
+			for (int i = 0; i < selected.getNeighbors().size(); i++) {
+				g2.setColor(Color.WHITE);
+				g2.draw(selected.getNeighbors().get(i).getArea());
+			}
 			g2.setColor(Color.RED);
 			g2.draw(selected.getArea());
 
@@ -322,7 +312,7 @@ public class Display extends JPanel {
 			for (int i = 0; i < titles.size(); i++) {
 				g2.setColor(Color.BLUE);
 				if (titles.get(i) == p.main)
-					g2.setColor(Color.ORANGE);
+					g2.setColor(Color.CYAN);
 				if (titles.get(i) == p.capital)
 					g2.setColor(Color.RED);
 
@@ -345,7 +335,10 @@ public class Display extends JPanel {
 			List<Title> claims = p.getClaims();
 
 			for (int i = 0; i < claims.size(); i++) {
-				g2.setColor(Color.GREEN);
+				if (claims.get(i).owner != null && !timeline.isVassalOf(p, timeline.getTopMost(p, claims.get(i).owner)))
+					g2.setColor(Color.GREEN);
+				else
+					g2.setColor(Color.GRAY);
 
 				g2.drawString(claims.get(i).toString(), Main.SIZE_X + 420, 104 + i * 14);
 			}

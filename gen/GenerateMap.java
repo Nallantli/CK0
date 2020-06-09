@@ -40,7 +40,7 @@ public class GenerateMap {
 
 	static int amt = 0;
 
-	// static OpenSimplexNoise noise;
+	static OpenSimplexNoise noise;
 
 	/**
 	 * @param size_x             Width of map.
@@ -198,7 +198,7 @@ public class GenerateMap {
 
 	public static void init() {
 		System.out.println("Adding Islands...");
-		// noise = new OpenSimplexNoise(1);
+		noise = new OpenSimplexNoise(Main.SEED);
 		Voronoi v = new Voronoi(.000001f);
 
 		int amount = (int) (Main.rand.nextInt((int) (MAX_ISLANDS / 2.0f)) + MAX_ISLANDS / 2.0f);
@@ -210,8 +210,8 @@ public class GenerateMap {
 			int randX = (int) (Math.cos(angle) * Main.rand.nextInt(radius) + SIZE_X / 2);
 			int randY = (int) (Math.sin(angle) * Main.rand.nextInt(radius) + SIZE_Y / 2);
 
-			//int randX = (int) (I_SIZE / 2 + Main.rand.nextInt((int) (SIZE_X - I_SIZE)));
-			//int randY = (int) (I_SIZE / 2 + Main.rand.nextInt((int) (SIZE_Y - I_SIZE)));
+			// int randX = (int) (I_SIZE / 2 + Main.rand.nextInt((int) (SIZE_X - I_SIZE)));
+			// int randY = (int) (I_SIZE / 2 + Main.rand.nextInt((int) (SIZE_Y - I_SIZE)));
 			int size = (int) (I_SIZE / 4.0 + Main.rand.nextInt((int) (I_SIZE - (I_SIZE * 0.25f))));
 
 			addIsland(randX, randY, size);
@@ -260,8 +260,12 @@ public class GenerateMap {
 			sPolygon poly = Polygons.get(key);
 
 			double mod = 0;
+			
 			int i = (int) poly.center.x;
 			int j = (int) poly.center.y;
+			
+			double value = noise.eval(i / (double)FEATURE_SIZE, j / (double)FEATURE_SIZE);
+
 			for (int k = 0; k < island_points.size(); k++) {
 				int pos_x = (island_points.get(k).x);
 				int pos_y = (island_points.get(k).y);
@@ -270,14 +274,13 @@ public class GenerateMap {
 
 				if (dist < 0)
 					dist = 0;
-
-				mod = (dist + mod);
+				mod = (dist + mod) - (0.005 * Math.pow(1 - Math.abs(value), 10));
 			}
 
 			if (mod > 1)
 				mod = 1;
 
-			poly.setLand(mod > 0.0);// && (value < 0.5);
+			poly.setLand(mod > 0.0);
 		}
 	}
 
@@ -286,6 +289,16 @@ public class GenerateMap {
 
 		for (int i = 0; i < neighbors.size(); i++) {
 			if (neighbors.get(i).isLand() == false && neighbors.get(i).inlandlake == false)
+				return true;
+		}
+		return false;
+	}
+
+	public static boolean bordersWater(sPolygon poly) {
+		List<sPolygon> neighbors = poly.neighbors;
+
+		for (int i = 0; i < neighbors.size(); i++) {
+			if (neighbors.get(i).isLand() == false)
 				return true;
 		}
 		return false;
@@ -552,12 +565,9 @@ public class GenerateMap {
 			sPolygon poly = Polygons.get(key);
 
 			if (poly.isLand()) {
-				// double value = noise.eval(poly.center.x / FEATURE_SIZE, poly.center.y /
-				// FEATURE_SIZE);
-
 				float dist = distanceFromPlateEdge((int) poly.center.x, (int) poly.center.y) * 1.5f;
 
-				float h = (float) (findClosestOcean(poly));// + ((value + 1.0) * 0.0f));
+				float h = (float) (findClosestOcean(poly));// + ((value + 1.0) * 2.0f));
 
 				h = dist - h / 2.0f;
 

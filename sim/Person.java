@@ -24,7 +24,7 @@ public class Person {
 	private List<Person> sub;
 	private List<Person> court;
 	public List<Person> children;
-	private List<String> history;
+	private List<Event> history;
 	public HashMap<Person, Integer> truces;
 	private Person res;
 	int max_c = 12;
@@ -36,7 +36,7 @@ public class Person {
 	Timeline time;
 	private Person lord, spouse;
 	public Title capital = null;
-	float age;
+	double age;
 	private boolean dead;
 	boolean ismale;
 	public Language lang;
@@ -55,7 +55,7 @@ public class Person {
 	public ArrayList<Person> forefathers = new ArrayList<Person>();
 	private String roman_numeral = "";
 
-	public Person(Dynasty dynasty, Timeline time, boolean ismale, Language lang, float age, int intelligence,
+	public Person(Dynasty dynasty, Timeline time, boolean ismale, Language lang, double age, int intelligence,
 			ArrayList<Person> pn) {
 		if (dynasty == null) {
 			this.dynasty = new Dynasty(lang, time);
@@ -69,7 +69,7 @@ public class Person {
 		this.ismale = ismale;
 		this.age = age;
 		this.intelligence = intelligence;
-		this.name = lang.genPersonName(String.valueOf(time.id), ismale);
+		this.name = lang.genPersonName(String.valueOf(time.id), ismale, false);
 
 		this.lang = lang;
 		this.demesne = new ArrayList<Title>();
@@ -83,7 +83,7 @@ public class Person {
 		this.wars = new ArrayList<War>();
 		this.truces = new HashMap<Person, Integer>();
 
-		this.history = new ArrayList<String>();
+		this.history = new ArrayList<Event>();
 
 		if (ismale) {
 			this.forefathers.addAll(pn);
@@ -170,9 +170,18 @@ public class Person {
 
 		this.main = null;
 		this.capital = null;
+		this.cache = null;
+		this.dynasty.remove(this);
+		this.children.clear();
+		this.sub.clear();
+		this.court.clear();
+		this.forefathers.clear();
+		this.truces.clear();
+		this.wars.clear();
+		this.history.clear();
+		this.claims.clear();
 
 		time.setForRemove(this);
-		this.dynasty.remove(this);
 	}
 
 	public boolean hasTerritory() {
@@ -275,8 +284,8 @@ public class Person {
 		this.CheckSubs();
 
 		if (capital != null && main != null)
-			capital.development = (float) Math.max(0,
-					Math.min(1000, capital.development + (0.08 * main.level * ((float) intelligence / 20f - 0.25f))));
+			capital.development = (double) Math.max(0,
+					Math.min(1000, capital.development + (0.06 * main.level * ((double) intelligence / 20.0 - 0.25))));
 
 		/*
 		 * if (!demesne.isEmpty() && capital != null) this.develop();
@@ -287,12 +296,12 @@ public class Person {
 	 * public void develop() { for (int i = 0; i < demesne.size(); i++) { Title t =
 	 * demesne.get(i); if (!t.occupied) { double dist = Math.max(0, ((100 -
 	 * t.getCenter().distance(capital.getCenter())) / 2000) * (1 + main.level));
-	 * t.development = (float) Math.min(1000, t.development + dist); } } }
+	 * t.development = (double) Math.min(1000, t.development + dist); } } }
 	 */
 
 	public void updateLevy() {
 		if (this.levy < this.getMaxLevy(this, null))
-			this.levy = (int) (this.levy + (this.getMaxLevy(this, null) / 12.0f));
+			this.levy = (int) (this.levy + (this.getMaxLevy(this, null) / 12.0));
 
 		if (this.levy > this.getMaxLevy(this, null))
 			this.levy = this.getMaxLevy(this, null);
@@ -329,10 +338,10 @@ public class Person {
 				System.err.println("ERR: That's not supposed to happen!");
 				System.exit(1);
 			}
-			sub_l += (int) (s.getMaxLevy(o, this) * 0.5f);
+			sub_l += (int) (s.getMaxLevy(o, this) * 0.5);
 		}
 
-		float dev_l = 0;
+		double dev_l = 0;
 		for (int i = 0; i < demesne.size(); i++) {
 			dev_l += demesne.get(i).development;
 		}
@@ -354,11 +363,12 @@ public class Person {
 	public void addClaim(Title t) {
 		if (claims.contains(t))
 			return;
-		addHistory(Main.CCOLOR.GREEN, getName() + " claims " + t.toString());
+		addHistory(Main.CCOLOR.GREEN, "$ claims " + t.toString(), this);
 		claims.add(t);
 	}
 
 	public void removeClaim(Title t) {
+		addHistory(Main.CCOLOR.GREEN, "$ loses claim on " + t.toString(), this);
 		claims.remove(t);
 	}
 
@@ -480,10 +490,9 @@ public class Person {
 			} else {
 				Title give_away = getLeastImportantKingdom();
 
-				addHistory(Main.CCOLOR.MAGENTA,
-						getName() + " transfers " + give_away.toString() + " to " + t.owner.getName());
-				t.owner.addHistory(Main.CCOLOR.MAGENTA,
-						t.owner.getName() + " is transferred " + give_away.toString() + " by " + getName());
+				addHistory(Main.CCOLOR.MAGENTA, "$ transfers " + give_away.toString() + " to $", this, t.owner);
+				t.owner.addHistory(Main.CCOLOR.MAGENTA, "$ is transferred " + give_away.toString() + " from $", t.owner,
+						this);
 
 				time.addKingdom(t.owner, give_away, true);
 			}
@@ -502,13 +511,13 @@ public class Person {
 
 			if (t == null)
 				return;
-				//System.err.println("No applicable subs - Duchy!");
+			// System.err.println("No applicable subs - Duchy!");
 			else {
 				Title give_away = getLeastImportantDuchy();
 
-				addHistory(Main.CCOLOR.MAGENTA, getName() + " transfers " + t.toString() + " to " + t.owner.getName());
-				t.owner.addHistory(Main.CCOLOR.MAGENTA,
-						t.owner.getName() + " is transferred " + give_away.toString() + " by " + getName());
+				addHistory(Main.CCOLOR.MAGENTA, "$ transfers " + give_away.toString() + " to $", this, t.owner);
+				t.owner.addHistory(Main.CCOLOR.MAGENTA, "$ is transferred " + give_away.toString() + " from $", t.owner,
+						this);
 
 				time.addDuchy(t.owner, give_away, true);
 			}
@@ -564,13 +573,11 @@ public class Person {
 
 				Person p = this.getFromCourt();
 				removeCourt(p);
-				p.lord = this;
-				sub.add(p);
-
-				addHistory(Main.CCOLOR.MAGENTA, getName() + " transfers " + t.toString() + " to " + p.getName());
-				p.addHistory(Main.CCOLOR.MAGENTA, p.getName() + " is transferred " + t.toString() + " by " + getName());
-
 				time.addDemesne(p, t, true);
+				p.setLord(this);
+
+				addHistory(Main.CCOLOR.MAGENTA, "$ transfers " + t.toString() + " to $", this, p);
+				p.addHistory(Main.CCOLOR.MAGENTA, "$ is transferred " + t.toString() + " from $", p, this);
 			}
 		}
 	}
@@ -803,11 +810,10 @@ public class Person {
 		this.children.add(c);
 		spouse.children.add(c);
 		spouse.gestation = 18;
-		addHistory(Main.CCOLOR.CYAN, c.getName() + " is born to " + this.getName() + " and " + spouse.getName() + "!");
-		spouse.addHistory(Main.CCOLOR.CYAN,
-				c.getName() + ", is born to " + spouse.getName() + " and " + getName() + "!");
+		addHistory(Main.CCOLOR.CYAN, "$ is born to $ and $!", new Person[] { c, this, spouse });
+		spouse.addHistory(Main.CCOLOR.CYAN, "$ is born to $ and $!", new Person[] { c, spouse, this });
 
-		c.addHistory(Main.CCOLOR.CYAN, c.getName() + " is born to " + getName() + " and " + spouse.getName() + "!");
+		c.addHistory(Main.CCOLOR.CYAN, "$ is born to $ and $!", new Person[] { c, this, spouse });
 
 		if (this.hasTerritory())
 			time.addToCourt(c, this);
@@ -890,9 +896,9 @@ public class Person {
 					curr = curr.getLord();
 					depth++;
 				}
-				c = new Color((int) (curr.main.c.getRed() * Math.pow(0.9f, depth)),
-						(int) (curr.main.c.getGreen() * Math.pow(0.9f, depth)),
-						(int) (curr.main.c.getBlue() * Math.pow(0.9f, depth)));
+				c = new Color((int) (curr.main.c.getRed() * Math.pow(0.9, depth)),
+						(int) (curr.main.c.getGreen() * Math.pow(0.9, depth)),
+						(int) (curr.main.c.getBlue() * Math.pow(0.9, depth)));
 			}
 		}
 
@@ -900,13 +906,12 @@ public class Person {
 
 		if (!this.sub.isEmpty()) {
 			for (int i = 0; i < this.sub.size(); i++) {
-				Color c2 = new Color((int) (c.getRed() * 0.9f), (int) (c.getGreen() * 0.9f),
-						(int) (c.getBlue() * 0.9f));
+				Color c2 = new Color((int) (c.getRed() * 0.9), (int) (c.getGreen() * 0.9), (int) (c.getBlue() * 0.9));
 				sub.get(i).draw(g2, c2, false);
 			}
 		}
 
-		if (update_area) {
+		if (update_area || cache == null) {
 			update_area = false;
 			cache = new Area();
 			List<Title> draw_demesne = new ArrayList<Title>();
@@ -1041,6 +1046,8 @@ public class Person {
 		HashMap<Person, Integer> new_truces = new HashMap<Person, Integer>();
 
 		for (Person key : truces.keySet()) {
+			if (key.isDead())
+				continue;
 			if (truces.get(key) - 1 > 0)
 				new_truces.put(key, truces.get(key) - 1);
 		}
@@ -1049,28 +1056,37 @@ public class Person {
 	}
 
 	public String getName() {
-		String dead = "";
+		StringBuilder sname = new StringBuilder();
 		if (this.dead)
-			dead = " DEAD";
-		String title = "";
+			sname.append("† ");
 		if (main != null) {
 			switch (main.level) {
 				case 0:
-					title = (ismale ? "Count " : "Countess ");
+					sname.append(ismale ? "Count " : "Countess ");
 					break;
 				case 1:
-					title = (ismale ? "Duke " : "Duchess ");
+					sname.append(ismale ? "Duke " : "Duchess ");
 					break;
 				case 2:
-					title = (ismale ? "King " : "Queen ");
+					sname.append(ismale ? "King " : "Queen ");
 					break;
 				case 3:
-					title = (ismale ? "Emperor " : "Empress ");
+					sname.append(ismale ? "Emperor " : "Empress ");
 					break;
 			}
 		}
-		return title + this.name.transpose() + " " + this.dynasty + roman_numeral + " (" + this.intelligence + ","
-				+ (this.ismale ? "M" : "F") + "," + (int) this.age + ")" + dead;
+		sname.append(this.name.transpose());
+		sname.append(' ');
+		sname.append(this.dynasty.toString());
+		sname.append(roman_numeral);
+		sname.append(" (");
+		sname.append(this.intelligence);
+		sname.append(',');
+		sname.append(this.ismale ? "M" : "F");
+		sname.append(',');
+		sname.append(Math.floor(this.age));
+		sname.append(')');
+		return sname.toString();
 	}
 
 	public void printVassalChart(int tab) {
@@ -1124,21 +1140,24 @@ public class Person {
 	}
 
 	public void setSpouse(Person p) {
+		if (spouse != null && spouse.spouse == this)
+			spouse.spouse = null;
 		if (p != null)
 			p.spouse = this;
+
 		spouse = p;
 	}
 
-	public void removeCourt(Person p) {
-		addHistory(Main.CCOLOR.MAGENTA, p.getName() + " leaves the court of " + getName());
-		p.addHistory(Main.CCOLOR.MAGENTA, p.getName() + " leaves the court of " + getName());
+	private void removeCourt(Person p) {
+		addHistory(Main.CCOLOR.MAGENTA, "$ leaves the court of $", p, this);
+		p.addHistory(Main.CCOLOR.MAGENTA, "$ leaves the court of $", p, this);
 		court.remove(p);
 		p.res = null;
 	}
 
-	public void removeSub(Person p) {
-		addHistory(Main.CCOLOR.YELLOW, getName() + " loses their vassal " + p.getName());
-		p.addHistory(Main.CCOLOR.GREEN, p.getName() + " breaks from from " + getName());
+	private void removeSub(Person p) {
+		addHistory(Main.CCOLOR.YELLOW, "$ loses their vassal $", this, p);
+		p.addHistory(Main.CCOLOR.GREEN, "$ breaks from from $", p, this);
 		sub.remove(p);
 		p.lord = null;
 	}
@@ -1151,7 +1170,7 @@ public class Person {
 		return court.contains(p);
 	}
 
-	public int totalAreaSize() {
+	public double totalAreaSize() {
 		return demesne.size() + getAllSubDemesne().size();
 	}
 
@@ -1162,6 +1181,8 @@ public class Person {
 		}
 		if (lord != null)
 			lord.removeSub(this);
+		if (res != null)
+			res.removeCourt(this);
 		if (new_lord != null) {
 			if (new_lord.main == null || main == null) {
 				System.err.println("ERROR: Vassals and lords must own land!");
@@ -1173,8 +1194,8 @@ public class Person {
 				System.out.println(getName() + " > " + new_lord.getName());
 				return;
 			}
-			new_lord.addHistory(Main.CCOLOR.GREEN, new_lord.getName() + " vassalizes " + getName());
-			addHistory(Main.CCOLOR.YELLOW, getName() + " is vassalized by " + new_lord.getName());
+			new_lord.addHistory(Main.CCOLOR.GREEN, "$ vassalizes $", new_lord, this);
+			addHistory(Main.CCOLOR.YELLOW, "$ is vassalized by $", this, new_lord);
 			new_lord.sub.add(this);
 		}
 		lord = new_lord;
@@ -1185,21 +1206,31 @@ public class Person {
 			System.err.println("ERROR: Cannot set res to one's self!");
 			System.exit(1);
 		}
+		if (lord != null)
+			lord.removeSub(this);
 		if (res != null)
 			res.removeCourt(this);
 		res = new_res;
 		if (new_res != null) {
-			new_res.addHistory(Main.CCOLOR.MAGENTA, new_res.getName() + " is joined at court by " + getName());
-			addHistory(Main.CCOLOR.MAGENTA, getName() + " arrives at the court of " + new_res.getName());
+			new_res.addHistory(Main.CCOLOR.MAGENTA, "$ is joined at court by $", new_res, this);
+			addHistory(Main.CCOLOR.MAGENTA, "$ arrives at the court of $", this, new_res);
 			new_res.court.add(this);
 		}
 	}
 
-	public void addHistory(Main.CCOLOR color, String s) {
-		history.add("[" + time.semimonth + "]\t" + color + s + Main.CCOLOR.RESET);
+	public void addHistory(Main.CCOLOR color, String s, Person p1, Person p2) {
+		addHistory(color, s, new Person[] { p1, p2 });
 	}
 
-	public List<String> getHistory() {
+	public void addHistory(Main.CCOLOR color, String s, Person p) {
+		addHistory(color, s, new Person[] { p });
+	}
+
+	public void addHistory(Main.CCOLOR color, String s, Person[] p) {
+		history.add(new Event(time.semimonth, color, s, p));
+	}
+
+	public List<Event> getHistory() {
 		return history;
 	}
 
@@ -1213,13 +1244,13 @@ public class Person {
 
 		if (culled)
 			this.addHistory(Main.CCOLOR.CYAN,
-					this.getName() + ", at age " + this.age + ", vanishes into obscurity, never to be seen again...");
+					"$, at age " + this.age + ", vanishes into obscurity, never to be seen again...", this);
 		else
-			this.addHistory(Main.CCOLOR.CYAN, this.getName() + " dies at age " + this.age);
+			this.addHistory(Main.CCOLOR.CYAN, "$ dies at age " + this.age, this);
 
 		for (Person p : children) {
-			p.addHistory(Main.CCOLOR.CYAN,
-					(ismale ? "Father" : "Mother") + " " + getName() + " of " + p.getName() + " dies at age " + age);
+			p.addHistory(Main.CCOLOR.CYAN, (ismale ? "Father" : "Mother") + " $ of $ dies at age " + age,
+					new Person[] { this, p });
 		}
 
 		if (Main.COOL_NAMES.contains(name.transpose())) {
@@ -1227,5 +1258,9 @@ public class Person {
 			System.out.println("\033[0;34mWeep, my friends, for " + this.getName() + ", a great "
 					+ (ismale ? "man" : "woman") + ", has passed to the next world...\033[0m");
 		}
+	}
+
+	public boolean hasClaim(Title t) {
+		return claims.contains(t);
 	}
 }

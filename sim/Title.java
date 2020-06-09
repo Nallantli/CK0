@@ -16,17 +16,20 @@ public class Title {
 	 */
 	public int level;
 	public List<Title> titles;
-	public List<Title> neighbors;
+	private List<Title> neighbors;
+	private List<Title> waterway_neighbors;
+	List<Title> neighbor_cache;
 	public sPolygon poly;
-	private int id;
+	public int id;
 	public Title master;
 	public Color c;
 	private Area a;
 	public Person owner = null;
 	public boolean occupied;
 	private Language lang;
-	public float development = 0;
+	public double development = 0;
 	public int fort = 5;
+	public Island island;
 
 	public Title(Language lang, sPolygon poly, int id) {
 		this.lang = lang;
@@ -34,12 +37,15 @@ public class Title {
 		this.poly = poly;
 		this.a = poly.getArea();
 		this.neighbors = new ArrayList<Title>();
+		this.waterway_neighbors = new ArrayList<Title>();
 		this.id = id;
 
-		this.c = Color.getHSBColor((float) Math.random(), 0.25f + ((float) Math.random() * 0.75f), 0.75f + ((float) Math.random() * 0.25f));
+		this.c = Color.getHSBColor((float) Math.random(), 0.25f + ((float) Math.random() * 0.75f),
+				0.75f + ((float) Math.random() * 0.25f));
 	}
 
 	public Title(Language lang, List<Title> titles, int level, int id) {
+		this.neighbors = new ArrayList<Title>();
 		this.lang = lang;
 		if (level == 0) {
 			System.err.println("Cannot invoke county using this constructor!");
@@ -53,7 +59,30 @@ public class Title {
 					titles.get(i).master = this;
 			}
 
-			this.c = Color.getHSBColor((float) Math.random(), 0.25f + ((float) Math.random() * 0.75f), 0.75f + ((float) Math.random() * 0.25f));
+			this.c = Color.getHSBColor((float) Math.random(), 0.25f + ((float) Math.random() * 0.75f),
+					0.75f + ((float) Math.random() * 0.25f));
+		}
+	}
+
+	public List<Title> getLandNeighbors() {
+		return neighbors;
+	}
+
+	public List<Title> getSeaNeighbors() {
+		return waterway_neighbors;
+	}
+
+	public List<Title> getNeighbors() {
+		switch (level) {
+			case 0:
+				if (neighbor_cache == null) {
+					neighbor_cache = new ArrayList<Title>();
+					neighbor_cache.addAll(neighbors);
+					neighbor_cache.addAll(waterway_neighbors);
+				}
+				return neighbor_cache;
+			default:
+				return neighbors;
 		}
 	}
 
@@ -149,7 +178,8 @@ public class Title {
 	}
 
 	public void drawDevelopment(Graphics2D g2) {
-		g2.setColor(Color.getHSBColor(0.5f, 1f - (float) Math.min(1f, development / 1000f), Math.min(1f, development / 1000f)));
+		g2.setColor(Color.getHSBColor(0.5f, 1f - (float) Math.min(1f, development / 1000f),
+				Math.min(1f, (float) development / 1000f)));
 
 		g2.fill(this.getArea());
 
@@ -170,15 +200,21 @@ public class Title {
 
 		List<Title> necessary = getLowest();
 
-		//if (p.getLord() == null || p.getLord().main.level > level) {
-			int amt = 0;
-			for (Title t : necessary) {
-				if (counties.contains(t))
-					amt++;
-			}
-			if (amt >= (necessary.size() / 2) + 1)
-				return true;
-		//}
+		// if (p.getLord() == null || p.getLord().main.level > level) {
+		int amt = 0;
+		for (Title t : necessary) {
+			if (counties.contains(t))
+				amt++;
+		}
+		double prop = (double) amt / (double) necessary.size();
+		switch (level) {
+			case 1:
+			case 2:
+				return prop >= 0.51;
+			case 3:
+				return prop >= 0.81;
+		}
+		// }
 
 		return false;
 	}
@@ -196,16 +232,29 @@ public class Title {
 	}
 
 	public String getName(Language lang) {
-		if (this.level == 0)
-			return "Province " + lang.genName("Province", String.valueOf(id)).transpose();
-		else if (this.level == 1)
-			return "Duchy " +  lang.genName("Duchy", String.valueOf(id)).transpose();
-		else if (this.level == 2)
-			return "Kingdom " + lang.genName("Kingdom", String.valueOf(id)).transpose();
-		else if (this.level == 3)
-			return "Empire " + lang.genName("Empire", String.valueOf(id)).transpose();
-		else
-			return null;
+		StringBuilder s = new StringBuilder();
+		StringBuilder n = new StringBuilder();
+		n.append(level);
+		n.append(' ');
+		n.append(id);
+		switch (level) {
+			case 0:
+				s.append("Province ");
+				break;
+			case 1:
+				s.append("Duchy ");
+				break;
+			case 2:
+				s.append("Kingdom ");
+				break;
+			case 3:
+				s.append("Empire ");
+				break;
+			default:
+				return null;
+		}		
+		s.append(lang.getNoun(n.toString(), false).transpose());
+		return s.toString();
 	}
 
 	public String toString() {
@@ -230,5 +279,13 @@ public class Title {
 			curr = curr.master;
 		}
 		return false;
+	}
+
+	public void addLandNeighbor(Title title) {
+		this.neighbors.add(title);
+	}
+
+	public void addSeaNeighbor(Title title) {
+		this.waterway_neighbors.add(title);
 	}
 }

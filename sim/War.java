@@ -11,7 +11,7 @@ public class War {
 	private boolean done, deleted;
 	private List<Title> occ_a;
 	private List<Title> occ_b;
-	private float war_score;
+	private double war_score;
 
 	public War(Title claim, Person a, Person b) {
 		this.claim = claim;
@@ -31,6 +31,10 @@ public class War {
 	}
 
 	public boolean deadcheck() {
+		if (!b.vassalHas(claim))
+			return true;
+		if (!this.a.hasTerritory() || !this.b.hasTerritory())
+			return true;
 		if (this.a.isDead() || this.b.isDead())
 			return true;
 		else
@@ -48,7 +52,7 @@ public class War {
 		else if (a.capital != null && b.capital != null) {
 			if (p.equals(a)) {
 				if (occ_a.isEmpty()) {
-					this.war_score += 0.005f;
+					this.war_score += 0.005;
 					Title t = b.getNearestUnoccupiedDemesne(a);
 					if (t != null) {
 						if (this.fight(a, b) == a) {
@@ -57,13 +61,13 @@ public class War {
 								t.occupied = true;
 								occ_b.add(t);
 								t.development *= 0.9;
-								this.war_score = this.war_score + 1.0f / (float) (b.totalAreaSize());
+								this.war_score += + 1.0 / b.totalAreaSize();
 							}
 						} else if (t.fort < 5)
 							t.fort++;
 					}
 				} else {
-					this.war_score -= 0.005f;
+					this.war_score -= 0.005;
 					Title t = a.getNearestOccupiedDemesne(a);
 					if (t != null) {
 						if (this.fight(a, b) == a) {
@@ -71,7 +75,7 @@ public class War {
 							if (t.fort == 5) {
 								t.occupied = false;
 								occ_a.remove(t);
-								this.war_score = this.war_score + 1.0f / (float) (a.totalAreaSize());
+								this.war_score += 1.0 / a.totalAreaSize();
 							}
 						} else if (t.fort > 0)
 							t.fort--;
@@ -79,7 +83,7 @@ public class War {
 				}
 			} else if (p.equals(b)) {
 				if (occ_b.isEmpty()) {
-					this.war_score -= 0.005f;
+					this.war_score -= 0.005;
 					Title t = a.getNearestUnoccupiedDemesne(b);
 					if (t != null) {
 						if (this.fight(b, a) == b) {
@@ -88,13 +92,13 @@ public class War {
 								t.occupied = true;
 								occ_a.add(t);
 								t.development *= 0.9;
-								this.war_score = this.war_score - 1.0f / (float) (a.totalAreaSize());
+								this.war_score -= 1.0 / a.totalAreaSize();
 							}
 						} else if (t.fort < 5)
 							t.fort++;
 					}
 				} else {
-					this.war_score += 0.005f;
+					this.war_score += 0.005;
 					Title t = b.getNearestOccupiedDemesne(b);
 					if (t != null) {
 						if (this.fight(b, a) == b) {
@@ -102,7 +106,7 @@ public class War {
 							if (t.fort == 5) {
 								t.occupied = false;
 								occ_b.remove(t);
-								this.war_score = this.war_score - 1.0f / (float) (b.totalAreaSize());
+								this.war_score -= 1.0 / b.totalAreaSize();
 							}
 						} else if (t.fort > 0)
 							t.fort--;
@@ -128,12 +132,12 @@ public class War {
 		int die_a = Main.rand.nextInt(army_a);
 		int die_b = Main.rand.nextInt(army_b);
 		if (die_a > die_b) {
-			a.levy = (int) (a.levy - loss * .1f);
-			b.levy = (int) (b.levy - loss * .3f);
+			a.levy = (int) (a.levy - loss * 0.1);
+			b.levy = (int) (b.levy - loss * 0.3);
 			return a;
 		} else {
-			a.levy = (int) (a.levy - loss * .3f);
-			b.levy = (int) (b.levy - loss * .1f);
+			a.levy = (int) (a.levy - loss * 0.3);
+			b.levy = (int) (b.levy - loss * 0.1);
 			return b;
 		}
 	}
@@ -143,8 +147,16 @@ public class War {
 		// b.getName());
 
 		if (this.deadcheck() == false) {
-			if (this.war_score >= 0)
-				a.time.addDemesne(a, claim, false);
+			if (this.war_score >= 0) {
+				switch (claim.level) {
+					case 0:
+						a.time.addDemesne(a, claim, false);
+						break;
+					case 1:
+						a.time.addDuchy(a, claim, true);
+						break;
+				}
+			}
 		}
 
 		for (int i = 0; i < this.occ_a.size(); i++) {
@@ -158,11 +170,11 @@ public class War {
 		}
 
 		if (this.war_score >= 0) {
-			a.addHistory(Main.CCOLOR.GREEN, a.getName() + " won an aggressive war against " + b.getName());
-			b.addHistory(Main.CCOLOR.RED, b.getName() + " lost a defensive war against " + a.getName());
+			a.addHistory(Main.CCOLOR.GREEN, "$ won an aggressive war against $", a, b);
+			b.addHistory(Main.CCOLOR.RED, "$ lost a defensive war against $", b, a);
 		} else {
-			a.addHistory(Main.CCOLOR.YELLOW, a.getName() + " lost an aggressive war against " + b.getName());
-			b.addHistory(Main.CCOLOR.GREEN, b.getName() + " won a defensive war against " + a.getName());
+			a.addHistory(Main.CCOLOR.YELLOW, "$ lost an aggressive war against $", a, b);
+			b.addHistory(Main.CCOLOR.GREEN, "$ won a defensive war against $", b, a);
 		}
 
 		a.time.curr_wars.remove(this.claim);
@@ -192,7 +204,7 @@ public class War {
 	public Person getAttacker() {
 		return a;
 	}
-	
+
 	public Person getDefender() {
 		return b;
 	}
@@ -205,7 +217,7 @@ public class War {
 		return deleted;
 	}
 
-	public float getWarScore() {
+	public double getWarScore() {
 		return war_score;
 	}
 }

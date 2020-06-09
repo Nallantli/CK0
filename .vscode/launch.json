@@ -6,6 +6,20 @@
 	"configurations": [
 		{
 			"type": "java",
+			"name": "CodeLens (Launch) - LangTest",
+			"request": "launch",
+			"mainClass": "test.LangTest",
+			"projectName": "TerrainGen2_3a1871fc"
+		},
+		{
+			"type": "java",
+			"name": "CodeLens (Launch) - NameGenerator",
+			"request": "launch",
+			"mainClass": "test.NameGenerator",
+			"projectName": "TerrainGen2_3a1871fc"
+		},
+		{
+			"type": "java",
 			"name": "CodeLens (Launch) - NameGenerator",
 			"request": "launch",
 			"mainClass": "ling.NameGenerator",

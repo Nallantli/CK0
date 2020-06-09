@@ -1,13 +1,21 @@
 package ling;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class Word {
-	ArrayList<Syllable> syllables;
+	List<Syllable> syllables;
 	String cached = null;
+	Orthography ortho;
 
-	public Word(ArrayList<Syllable> syllables) {
+	public Word(Orthography ortho) {
+		this.syllables = new ArrayList<Syllable>();
+		this.ortho = ortho;
+	}
+
+	public Word(List<Syllable> syllables, Orthography ortho) {
 		this.syllables = syllables;
+		this.ortho = ortho;
 	}
 
 	public String transpose() {
@@ -17,30 +25,16 @@ public class Word {
 				String temp = o.toString();
 				s += temp;
 			}
-			s = s.replace("ka", "ca");
-			s = s.replace("ko", "co");
-			s = s.replace("ku", "cu");
-			s = s.replace("ð", "th");
-			s = s.replace("kʷ", "qu");
-			s = s.replace("hʲ", "ç");
-			s = s.replace("ŋ", "ng");
-			s = s.replace("x", "ħ");
-			s = s.replace("ʔ", "q");
-			s = s.replace("ɲ", "ń");
-			s = s.replace("j", "y");
-			s = s.replace("dʒ", "j");
-			s = s.replace("ʒ", "ź");
-			s = s.replace("ks", "x");
-			s = s.replace("tʃ", "ć");
-			s = s.replace("ʃ", "ś");
-			s = s.replace("tś", "ć");
-			s = s.replace("ʷ", "w");
-			s = s.replace("ʲ", "y");
+			s = ortho.apply(s);
 
 			String split[] = s.split(" ");
 			cached = "";
 			for (int i = 0; i < split.length; i++) {
-					cached += " " + split[i].substring(0, 1).toUpperCase() + split[i].substring(1);
+				String temp = split[i];
+				if (temp.charAt(0) == '\'')
+					cached += " " + temp.substring(0, 2).toUpperCase() + temp.substring(2);
+				else
+					cached += " " + temp.substring(0, 1).toUpperCase() + temp.substring(1);
 			}
 			cached = cached.substring(1);
 		}

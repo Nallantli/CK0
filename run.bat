@@ -1,2 +1,2 @@
 @echo off
-java -jar Simulator.jar -O
+java -XX:+UseSerialGC -XX:+UseStringDeduplication -Dfile.encoding=UTF-8 -jar Simulator.jar
